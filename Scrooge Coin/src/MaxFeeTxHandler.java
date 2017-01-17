@@ -1,19 +1,21 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
-public class TxHandler {
+public class MaxFeeTxHandler {
 
     private UTXOPool m_utxoPool;
-    private static HashMap<String, String>  m_sxoPool = new HashMap<String, String>();
+    HashMap<String, Transaction> _txsMap = new HashMap<String, Transaction>();
 
     /*
      * Creates a public ledger whose current UTXOPool (collection of unspent transaction outputs) is
      * {@code utxoPool}. This should make a copy of utxoPool by using the UTXOPool(UTXOPool uPool)
      * constructor.
      */
-    public TxHandler(UTXOPool utxoPool) {
+    public MaxFeeTxHandler(UTXOPool utxoPool) {
         m_utxoPool = new UTXOPool(utxoPool);
     }
 
@@ -93,6 +95,32 @@ public class TxHandler {
         
         return true;
     }
+    
+    private void GetMaxTxsChain(List<Transaction> _tmpTxs, Transaction _txs)
+    {
+        if(_txs.numInputs() > 0)
+        {
+            //System.out.println("process inputs");
+            for(Transaction.Input obj : _txs.getInputs())
+            {
+                Transaction tx = _txsMap.get(Arrays.toString(obj.prevTxHash));
+                if(tx == null)
+                {
+                    return;
+                }
+                else
+                {
+                    if(0 > _tmpTxs.indexOf(tx))
+                    {
+                        _tmpTxs.add(tx);
+                        GetMaxTxsChain(_tmpTxs, tx);
+                    }
+                }
+            }
+        }
+        else
+            return;
+    }
 
     /**
      * Handles each epoch by receiving an unordered array of proposed transactions, checking each
@@ -101,37 +129,68 @@ public class TxHandler {
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
         List<Transaction> _tmpTxs = new ArrayList<Transaction>();
-
+        double max = 0.0;
+        int maxchain = 0;
+        
         for(int i=0; i<possibleTxs.length; i++)
         {
-            boolean goodTx = true;
+            _txsMap.put(Arrays.toString(possibleTxs[i].getHash()), possibleTxs[i]);
+            //System.out.println("Tx Hash:" + Arrays.toString( possibleTxs[i].getHash()));
+            //System.out.println("prevhash:" + Arrays.toString( possibleTxs[i].getInput(0).prevTxHash));
+            int j = 0;
+            for(Transaction.Output out : possibleTxs[i].getOutputs())
+            {
+                UTXO utxo = new UTXO(possibleTxs[i].getHash(), j);
+                m_utxoPool.addUTXO(utxo, out);
+                j++;
+            }
+        }
+        
+        //System.out.println("contains key:" + Arrays.toString(possibleTxs[1].getInput(0).prevTxHash));
+        //System.out.println("contains key:" + _txsMap.containsKey(Arrays.toString(possibleTxs[1].getInput(0).prevTxHash)));
+        for(int i=0; i<possibleTxs.length; i++)
+        {
+            //if(!isValidTx(possibleTxs[i]))
+                //continue;
+            //boolean goodTx = true;
             //System.out.println("transaction " + i);
-            if(isValidTx(possibleTxs[i]))
+            //if(isValidTx(possibleTxs[i]))
+            //{
+            List<Transaction> _localTxs = new ArrayList<Transaction>();
+            _localTxs.add(possibleTxs[i]);
+            //GetMaxTxsChain(_localTxs, possibleTxs[i]);
+            double inputfee = 0.0;
+            double outputfee = 0.0;
+            //System.out.println("localTxs size:" + _localTxs.size());
+            //for(Transaction tx : _localTxs)
             {
                 for(Transaction.Input obj : possibleTxs[i].getInputs())
                 {
                     UTXO utxo = new UTXO(obj.prevTxHash, obj.outputIndex);
                     if(m_utxoPool.contains(utxo))
                     {
-                        m_utxoPool.removeUTXO(utxo);
+                        inputfee += m_utxoPool.getTxOutput(utxo).value;
                     }
                     else
-                        goodTx = false;
+                    {
+                        System.out.println("not found");
+                    }
                 }
-                if(goodTx)
                 {
+                    //if(tx.getHash() != null)
                     int j=0;
                     for(Transaction.Output obj : possibleTxs[i].getOutputs())
                     {
-                        UTXO utxo = new UTXO(possibleTxs[i].getHash(), j);
-                        m_utxoPool.addUTXO(utxo, obj);
+                        outputfee += obj.value;
                         j++;
                     }
-                    _tmpTxs.add(possibleTxs[i]);
                 }
             }
-        }      
+            double tmp = inputfee - outputfee;
+            //System.out.printf("%f - %f \n", inputfee, outputfee);
+            //System.out.println("tmp:" + tmp);
+            _tmpTxs.add(possibleTxs[i]);
+        }
         return _tmpTxs.toArray(new Transaction[0]);
     }
-
 }

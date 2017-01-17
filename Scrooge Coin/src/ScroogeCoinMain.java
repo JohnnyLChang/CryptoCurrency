@@ -120,16 +120,18 @@ public class ScroogeCoinMain {
         Transaction tx3 = new Transaction();
  
         // the Transaction.Output of tx at position 0 has a value of 10
-        tx3.addInput(tx.getHash(), 0);
+        tx3.addInput(tx2.getHash(), 0);
+        tx3.addInput(tx2.getHash(), 1);
+        tx3.addInput(tx2.getHash(), 2);
  
         // I split the coin of value 10 into 3 coins and send all of them for simplicity to the same address (Alice)
-        tx3.addOutput(5, public_key_alice);
-        tx3.addOutput(3, public_key_alice);
-        tx3.addOutput(2, public_key_alice);
+        tx3.addOutput(3, public_key_scrooge);
+        tx3.addOutput(2, public_key_scrooge);
+        tx3.addOutput(1, public_key_scrooge);
  
         // There is only one (at position 0) Transaction.Input in tx2
         // and it contains the coin from Scrooge, therefore I have to sign with the private key from Scrooge
-        signature.initSign(private_key_scrooge);
+        signature.initSign(private_key_alice);
         signature.update(tx3.getRawDataToSign(0));
         sig = signature.sign();
         tx3.addSignature(sig, 0);
@@ -138,9 +140,11 @@ public class ScroogeCoinMain {
  
         // remember that the utxoPool contains a single unspent Transaction.Output which is the coin from Scrooge
         TxHandler txHandler = new TxHandler(utxoPool);
+        MaxFeeTxHandler maxFeeTxHandler  = new MaxFeeTxHandler(utxoPool);
         System.out.println(txHandler.isValidTx(tx2));
-        System.out.println(txHandler.handleTxs(new Transaction[]{tx2, tx3}).length);
-        System.out.println(txHandler.handleTxs(new Transaction[]{tx2, tx3}).length);
+        //System.out.println(txHandler.handleTxs(new Transaction[]{tx2, tx3}).length);
+        //System.out.println(txHandler.handleTxs(new Transaction[]{tx2, tx3}).length);
+        System.out.println(maxFeeTxHandler.handleTxs(new Transaction[]{tx3, tx2}).length);
         
 //        
 //        //init the utxo pool

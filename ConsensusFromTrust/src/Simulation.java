@@ -120,7 +120,14 @@ public class Simulation {
          System.out.println();
          System.out.println();
       }
-
+      
+//      int[] txnCounts = new int[numNodes];
+//      for (int i = 0; i < numNodes; i++) {
+//          Set<Transaction> transactions = nodes[i].sendToFollowers();
+//          txnCounts[i] = transactions.size();
+//          System.out.println("Node " + i + " believes consensus on " + transactions.size() + " transactions");
+//      }
+//      System.out.println("Mode: " + mode(txnCounts));
    }
 
 

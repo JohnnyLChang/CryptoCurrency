@@ -1,12 +1,14 @@
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Arrays;
 
 /* CompliantNode refers to a node that follows the rules (not malicious)*/
 public class CompliantNode implements Node {
     private Set<Transaction> m_pendingTransactions;
     private Set<Integer> m_followees;
-    private Set<Transaction> m_acceptTransactions;
+    private HashMap<Transaction, Set<Integer>> m_candidateTransactions;
     private double m_p_graph, m_p_malicious, m_p_txDistribution;
     private int m_numRounds;
     
@@ -18,7 +20,7 @@ public class CompliantNode implements Node {
         m_numRounds = numRounds;
         m_followees = new HashSet<Integer>();
         m_pendingTransactions = new HashSet<Transaction>();
-        m_acceptTransactions = new HashSet<Transaction>();
+        m_candidateTransactions = new HashMap<Transaction, Set<Integer>>();
     }
 
     public void setFollowees(boolean[] followees) {
@@ -29,12 +31,30 @@ public class CompliantNode implements Node {
     }
 
     public void setPendingTransaction(Set<Transaction> pendingTransactions) {
-        m_pendingTransactions.removeAll(m_pendingTransactions);
-        m_pendingTransactions.addAll(pendingTransactions);
+        m_pendingTransactions = new HashSet<Transaction>(pendingTransactions);
+        for(Transaction tx : m_pendingTransactions)
+        {
+            m_candidateTransactions.put(tx, new HashSet<Integer>());
+        }
     }
 
     public Set<Transaction> sendToFollowers() {
-        return m_pendingTransactions;
+        if(this.m_numRounds > 0)
+            return this.m_candidateTransactions.keySet();
+        else
+        {
+            HashSet<Transaction> proposal = new HashSet<Transaction>();
+            double nFollowee = (double)this.m_followees.size() / 2;
+            for(Transaction tx : this.m_candidateTransactions.keySet())
+            {
+                //Add only those accept transacion if the Set is more than half aggreed.
+                if(this.m_candidateTransactions.get(tx).size() >  nFollowee)
+                    proposal.add(tx);
+            }
+            for(Transaction tx : this.m_pendingTransactions)
+                proposal.add(tx);
+            return proposal;
+        }
     }
 
     public void receiveFromFollowees(Set<Candidate> candidates) {
@@ -45,12 +65,17 @@ public class CompliantNode implements Node {
             if(!this.m_followees.contains(obj.sender))
                 continue;
 
+            m_pendingTransactions.add(obj.tx);
             //Check if the TX is already accepted
-            if(!this.m_acceptTransactions.contains(obj.tx))
+            if(!this.m_candidateTransactions.containsKey(obj.tx))
             {
-                //TODO: do we need to validate the TX before add?
-                this.m_acceptTransactions.add(obj.tx);
+                this.m_candidateTransactions.put(obj.tx, new HashSet<Integer>(Arrays.asList(obj.sender)));
+            }
+            else
+            {
+                this.m_candidateTransactions.get(obj.tx).add(obj.sender);
             }
         }
+        m_numRounds--;
     }
 }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Node">
+  <ClassDiagramComponents>
+    <Interface name="Node" package="" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Methods>
+        <Method name="setFollowees" returnType="void" visibility="package">
+          <Argument type="boolean[]" name="followees"/>
+        </Method>
+        <Method name="setPendingTransaction" returnType="void" visibility="package">
+          <Argument type="Set&lt;Transaction&gt;" name="pendingTransactions"/>
+        </Method>
+        <Method name="sendToFollowers" returnType="Set&lt;Transaction&gt;" visibility="package"/>
+        <Method name="receiveFromFollowees" returnType="void" visibility="package">
+          <Argument type="Set&lt;Candidate&gt;" name="candidates"/>
+        </Method>
+      </Methods>
+    </Interface>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

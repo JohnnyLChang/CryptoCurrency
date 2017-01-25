@@ -1,31 +1,71 @@
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Arrays;
+
 // Block Chain should maintain only limited block nodes to satisfy the functions
 // You should not have all the blocks added to the block chain in memory 
 // as it would cause a memory overflow.
 
+
+
 public class BlockChain {
     public static final int CUT_OFF_AGE = 10;
+    private TxHandler m_txHandler;
+    private HashMap<ByteArrayWrapper, Block> m_BlockPool = new HashMap<ByteArrayWrapper, Block>();
+    private Block m_headerBlock;
+    private Integer m_MaxHeight = 0;
+    private HashMap<Integer, ArrayList<Block>> m_MaxHeightBlock = new HashMap<Integer, ArrayList<Block>>();
+    private TransactionPool m_txPool = new TransactionPool();
+    private UTXOPool m_utxoPool = new UTXOPool();
 
     /**
      * create an empty block chain with just a genesis block. Assume {@code genesisBlock} is a valid
      * block
      */
     public BlockChain(Block genesisBlock) {
-        // IMPLEMENT THIS
+        System.out.println("create new BlockChain");
+        ByteArrayWrapper empty = new ByteArrayWrapper(genesisBlock.getHash());
+        ArrayList<Block> tmp = new ArrayList<Block>();
+        tmp.add(genesisBlock);
+        m_MaxHeightBlock.put(0, tmp);
+        m_BlockPool.put(empty, genesisBlock);
+        System.out.println("Add header block");
+        m_headerBlock = m_BlockPool.get(empty);
+        
+        UTXO utxo = new UTXO(genesisBlock.getCoinbase().getHash(), 0);
+        m_utxoPool.addUTXO(utxo, genesisBlock.getCoinbase().getOutput(0));
+        m_txHandler = new TxHandler(m_utxoPool);
+        System.out.println("create new BlockChain finished");
     }
 
     /** Get the maximum height block */
     public Block getMaxHeightBlock() {
-        // IMPLEMENT THIS
+        return m_MaxHeightBlock.get(m_MaxHeight).get(0);
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
-        // IMPLEMENT THIS
+        //process the Max Height Block transaction and output the UTXO
+        TxHandler txHandler = new TxHandler(new UTXOPool());
+        Block block = getMaxHeightBlock();
+        ArrayList<Transaction> validTxs = new ArrayList<Transaction>();
+        for(Transaction tx : block.getTransactions())
+        {
+            if(txHandler.isValidTx(tx))
+            {
+                validTxs.add(tx);
+            }
+        }
+        Object[] objectList = validTxs.toArray();
+        Transaction[] TxArray = Arrays.copyOf(objectList,objectList.length,Transaction[].class);
+        txHandler.handleTxs(TxArray);
+        return txHandler.getUTXOPool();
     }
 
     /** Get the transaction pool to mine a new block */
     public TransactionPool getTransactionPool() {
-        // IMPLEMENT THIS
+        return m_txPool;
     }
 
     /**
@@ -41,11 +81,46 @@ public class BlockChain {
      * @return true if block is successfully added
      */
     public boolean addBlock(Block block) {
-        // IMPLEMENT THIS
+        
+        /*If you receive a block which claims to be a genesis block (parent is a null hash) 
+        in the addBlock(Block b) function, you can return false.*/
+        if(block.getPrevBlockHash() == null)
+        {
+            System.out.println("cannot add generic block");
+            return false;
+        }
+        
+        //the previous Block is not existed
+        ByteArrayWrapper prevHash = new ByteArrayWrapper(block.getPrevBlockHash());
+        if(!m_BlockPool.containsKey(prevHash))
+        {
+            System.out.println("prev is not existed");
+            return false;
+        }
+        
+        //Check if all the Tx in Block are valid
+        TxHandler tmpHandler = new TxHandler(m_utxoPool);
+        Transaction[] validTxs = tmpHandler.handleTxs(block.getTransactions().toArray(new Transaction[0]));
+        if(validTxs.length != block.getTransactions().size())
+        {
+            System.out.println("some tx in not valid");
+            return false;
+        }
+        
+        
+        for(Transaction tx : block.getTransactions()){
+            this.m_txPool.removeTransaction(tx.getHash());
+        }
+        
+        ByteArrayWrapper blockHash = new ByteArrayWrapper(block.getHash());
+        m_BlockPool.put(blockHash, block);
+        
+        System.out.println("Add Block successfully");
+        return true;
     }
 
     /** Add a transaction to the transaction pool */
     public void addTransaction(Transaction tx) {
-        // IMPLEMENT THIS
+        m_txPool.addTransaction(tx);
     }
 }

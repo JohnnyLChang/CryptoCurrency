@@ -240,4 +240,80 @@ public class BlockChainUnitTest {
             Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    
+    @Test  //this anotation is very important
+    public void TestCreateBlockAfterTransaction(){ 
+        
+        try {
+            
+            Block genericsBlock = new Block(null, m_ownerpair.getPublic());
+            genericsBlock.finalize();
+            
+            BlockChain oBlockChain = new BlockChain(genericsBlock);
+            Boolean bret = oBlockChain.addBlock(genericsBlock);
+            assertFalse(bret);
+            
+            BlockHandler blockHdlr = new BlockHandler(oBlockChain);
+            bret = blockHdlr.processBlock(genericsBlock);
+            assertFalse(bret);
+            
+            Security.addProvider(new BouncyCastleProvider());
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+            keyGen.initialize(2048, random);
+            
+            // Generating two key pairs, one for Scrooge and one for Alice
+            KeyPair pair = keyGen.generateKeyPair();
+            PrivateKey private_key_generic = pair.getPrivate();
+            PublicKey public_key_generic = pair.getPublic();
+            
+            pair = keyGen.generateKeyPair();
+            PrivateKey private_key_alice = pair.getPrivate();
+            PublicKey public_key_alice = pair.getPublic();
+            
+            // START - ROOT TRANSACTION
+            // Generating a root transaction tx out of thin air, so that Scrooge owns a coin of value 10
+            // By thin air I mean that this tx will not be validated, I just need it to get a proper Transaction.Output
+            // which I then can put in the UTXOPool, which will be passed to the TXHandler
+            Transaction tx = new Transaction();
+            tx.addOutput(25, public_key_generic);
+            
+            // that value has no meaning, but tx.getRawDataToSign(0) will access in.prevTxHash;
+            byte[] initialHash = BigInteger.valueOf(1695609641).toByteArray();
+            tx.addInput(genericsBlock.getCoinbase().getHash(), 0);
+            
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(m_ownerpair.getPrivate());
+            signature.update(tx.getRawDataToSign(0));
+            byte[] sig = signature.sign();
+            
+            tx.addSignature(sig, 0);
+            tx.finalize();
+            System.out.println("process valid Tx");
+            blockHdlr.processTx(tx);
+            
+            //Add first block
+            Block blockFirst = blockHdlr.createBlock(public_key_alice);
+            assertNotNull(blockFirst);
+            //the new block show countain the valid Tx
+            assertNotSame(blockFirst.getTransactions().size(), 0);
+            assertSame(blockFirst.getTransaction(0).getHash(), tx.getHash());
+            
+            //Add second block
+            Block blockSecond = blockHdlr.createBlock(public_key_alice);
+            assertNotNull(blockSecond);
+            //the new block show countain the valid Tx
+            assertSame(blockSecond.getTransactions().size(), 0);
+            ByteArrayWrapper first = new ByteArrayWrapper(blockFirst.getHash());
+            assertTrue(first.equals(new ByteArrayWrapper(blockSecond.getPrevBlockHash())));
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchProviderException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvalidKeyException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SignatureException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }

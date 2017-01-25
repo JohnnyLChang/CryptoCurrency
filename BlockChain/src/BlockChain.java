@@ -47,8 +47,11 @@ public class BlockChain {
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
         //process the Max Height Block transaction and output the UTXO
-        TxHandler txHandler = new TxHandler(new UTXOPool());
         Block block = getMaxHeightBlock();
+        UTXOPool utxoPool = new UTXOPool();
+        UTXO utxo = new UTXO(block.getCoinbase().getHash(), 0);
+        utxoPool.addUTXO(utxo, block.getCoinbase().getOutput(0));
+        TxHandler txHandler = new TxHandler(utxoPool);
         ArrayList<Transaction> validTxs = new ArrayList<Transaction>();
         for(Transaction tx : block.getTransactions())
         {
@@ -107,14 +110,25 @@ public class BlockChain {
             return false;
         }
         
-        
-        for(Transaction tx : block.getTransactions()){
-            this.m_txPool.removeTransaction(tx.getHash());
+        //Test 11: Process a block containing a transaction that claims a UTXO from earlier in its branch that has not yet been claimed
+        //Test 10: Process a block containing a transaction that claims a UTXO not on its branch
+        if(prevHash.equals(new ByteArrayWrapper(this.getMaxHeightBlock().getHash())))
+        {
+            UTXO utxo = new UTXO(block.getCoinbase().getHash(), 0);
+            this.m_utxoPool.addUTXO(utxo, block.getCoinbase().getOutput(0));
+            m_MaxHeight++; 
+            ArrayList<Block> tmp = new ArrayList<Block>();
+            tmp.add(block);
+            m_MaxHeightBlock.put(m_MaxHeight, tmp);
         }
         
         ByteArrayWrapper blockHash = new ByteArrayWrapper(block.getHash());
         m_BlockPool.put(blockHash, block);
         
+        for(Transaction tx : block.getTransactions())
+        {
+            m_txPool.removeTransaction(tx.getHash());
+        }
         System.out.println("Add Block successfully");
         return true;
     }

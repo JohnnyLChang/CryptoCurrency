@@ -3,6 +3,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Block {
 
@@ -15,11 +16,9 @@ public class Block {
 
     /** {@code address} is the address to which the coinbase transaction would go */
     public Block(byte[] prevHash, PublicKey address) {
-        System.out.println("create new block");
         prevBlockHash = prevHash;
         coinbase = new Transaction(COINBASE, address);
         txs = new ArrayList<Transaction>();
-        System.out.println("create new block completed");
     }
 
     public Transaction getCoinbase() {

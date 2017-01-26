@@ -316,4 +316,186 @@ public class BlockChainUnitTest {
             Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    
+    @Test  //this anotation is very important
+    public void TestAddSpentTransactionBlock(){ 
+        
+        try {
+            
+            Block genericsBlock = new Block(null, m_ownerpair.getPublic());
+            genericsBlock.finalize();
+            
+            BlockChain oBlockChain = new BlockChain(genericsBlock);
+            BlockHandler blkHandler = new BlockHandler(oBlockChain);
+            
+            Security.addProvider(new BouncyCastleProvider());
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+            keyGen.initialize(2048, random);
+            
+            KeyPair pair = keyGen.generateKeyPair();
+            PrivateKey private_key_alice = pair.getPrivate();
+            PublicKey public_key_alice = pair.getPublic();
+            
+            pair = keyGen.generateKeyPair();
+            PrivateKey private_key_bob = pair.getPrivate();
+            PublicKey public_key_bob = pair.getPublic();
+            
+            
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            
+            // START - PROPER TRANSACTION
+            Transaction tx2 = new Transaction();
+
+            // the Transaction.Output of tx at position 0 has a value of 10
+            tx2.addInput(genericsBlock.getCoinbase().getHash(), 0);
+
+            // I split the coin of value 10 into 3 coins and send all of them for simplicity to the same address (Alice)
+            tx2.addOutput(5, public_key_alice);
+            tx2.addOutput(10, public_key_alice);
+            tx2.addOutput(10, public_key_alice);
+
+            // There is only one (at position 0) Transaction.Input in tx2
+            // and it contains the coin from Scrooge, therefore I have to sign with the private key from Scrooge
+            signature.initSign(this.m_ownerpair.getPrivate());
+            signature.update(tx2.getRawDataToSign(0));
+            byte[] sig = signature.sign();
+            tx2.addSignature(sig, 0);
+            tx2.finalize();
+
+            // START - PROPER TRANSACTION
+            Transaction tx3 = new Transaction();
+
+            // the Transaction.Output of tx at position 0 has a value of 10
+            tx3.addInput(tx2.getHash(), 0);
+
+            // I split the coin of value 10 into 3 coins and send all of them for simplicity to the same address (Alice)
+            tx3.addOutput(1, public_key_bob);
+            tx3.addOutput(1, public_key_bob);
+            tx3.addOutput(3, public_key_bob);
+
+            // There is only one (at position 0) Transaction.Input in tx2
+            // and it contains the coin from Scrooge, therefore I have to sign with the private key from Scrooge
+            signature.initSign(private_key_alice);
+            signature.update(tx3.getRawDataToSign(0));
+            sig = signature.sign();
+            tx3.addSignature(sig, 0);
+            tx3.finalize();
+            
+            blkHandler.processTx(tx2);
+            blkHandler.processTx(tx3);
+            
+            System.out.println("UTXO size in stage 1 is "+oBlockChain.getMaxHeightUTXOPool().getAllUTXO().size());
+            
+            //Add first block
+            Block blockFirst = blkHandler.createBlock(public_key_bob);
+            assertFalse(blockFirst == null);
+            System.out.println("UTXO size in stage 2 is "+oBlockChain.getMaxHeightUTXOPool().getAllUTXO().size());
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchProviderException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvalidKeyException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SignatureException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    @Test  //this anotation is very important
+    public void TestProcessMultipleBlocksOnGenericsBlock() throws NoSuchProviderException, InvalidKeyException, SignatureException{ 
+        try {
+            Security.addProvider(new BouncyCastleProvider());
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+            keyGen.initialize(2048, random);
+            
+            Block genericsBlock = new Block(null, m_ownerpair.getPublic());
+            genericsBlock.finalize();
+            BlockChain oBlockChain = new BlockChain(genericsBlock);
+            BlockHandler blkHandler = new BlockHandler(oBlockChain);
+            System.out.println("[MultipleBlocks] create initial block chain");
+            
+            KeyPair pair = keyGen.generateKeyPair();
+            Block second = blkHandler.createBlock(pair.getPublic());
+            System.out.println("[MultipleBlocks] create second block node");
+            
+            KeyPair pair1 = keyGen.generateKeyPair();
+            Block forkBlock = new Block(genericsBlock.getHash(), pair1.getPublic());
+            forkBlock.finalize();
+            Boolean bret = blkHandler.processBlock(forkBlock);
+            assertTrue(bret);
+            System.out.println("[MultipleBlocks] process another block node 1");
+            
+            KeyPair pair2 = keyGen.generateKeyPair();
+            Block forkBlock2 = new Block(genericsBlock.getHash(), pair2.getPublic());
+            forkBlock2.finalize();
+            bret = blkHandler.processBlock(forkBlock2);
+            assertTrue(bret);
+            System.out.println("[MultipleBlocks] process another block node 2");
+            
+            // START - PROPER TRANSACTION
+            Transaction tx2 = new Transaction();
+            tx2.addInput(genericsBlock.getCoinbase().getHash(), 0);
+
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            
+            KeyPair Alice = keyGen.generateKeyPair();
+            tx2.addOutput(5, Alice.getPublic());
+            tx2.addOutput(10, Alice.getPublic());
+            tx2.addOutput(10, Alice.getPublic());
+            signature.initSign(m_ownerpair.getPrivate());
+            signature.update(tx2.getRawDataToSign(0));
+            byte[] sigtx2 = signature.sign();
+            tx2.addSignature(sigtx2, 0);
+            tx2.finalize();
+            blkHandler.processTx(tx2);
+            
+            KeyPair pair3 = keyGen.generateKeyPair();
+            Block second2 = blkHandler.createBlock(pair3.getPublic());
+            assertSame(second2.getTransactions().size(), 1);
+            System.out.println("[MultipleBlocks] createBlock over maxheight, poolsize is "
+                    + oBlockChain.getMaxHeightUTXOPool().getAllUTXO().size());
+            
+            // START - PROPER TRANSACTION
+            Transaction tx3 = new Transaction();
+
+            tx3.addInput(tx2.getHash(), 0);
+            tx3.addInput(tx2.getHash(), 1);
+            tx3.addInput(tx2.getHash(), 2);
+
+            KeyPair pair4 = keyGen.generateKeyPair();
+            tx3.addOutput(6, pair4.getPublic());
+            tx3.addOutput(8, pair4.getPublic());
+            tx3.addOutput(11, pair4.getPublic());
+            signature.initSign(Alice.getPrivate());
+            signature.update(tx3.getRawDataToSign(0));
+            byte[] sig = signature.sign();
+            tx3.addSignature(sig, 0);
+            signature.update(tx3.getRawDataToSign(1));
+            sig = signature.sign();
+            tx3.addSignature(sig, 1);
+            signature.update(tx3.getRawDataToSign(2));
+            sig = signature.sign();
+            tx3.addSignature(sig, 2);
+            tx3.finalize();
+            blkHandler.processTx(tx3);
+            
+            KeyPair pair5 = keyGen.generateKeyPair();
+            Block second3 = blkHandler.createBlock(pair5.getPublic());
+            assertSame(oBlockChain.getMaxHeightUTXOPool().getAllUTXO().size(), 6);
+            System.out.println("UTXO pool size " + oBlockChain.getMaxHeightUTXOPool().getAllUTXO().size());
+            
+            //check if the previous block is equal
+            ByteArrayWrapper tmp2 = new ByteArrayWrapper(second2.getHash());
+            assertTrue(tmp2.equals(new ByteArrayWrapper(second3.getPrevBlockHash())));
+            
+            //check if the highest is current block
+            ByteArrayWrapper highest = new ByteArrayWrapper(oBlockChain.getMaxHeightBlock().getHash());
+            assertTrue(highest.equals(new ByteArrayWrapper(second3.getHash())));
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(BlockChainUnitTest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
 }

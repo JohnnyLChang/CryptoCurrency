@@ -76,7 +76,7 @@ public class TxHandler {
                 }
                 if(!Crypto.verifySignature(out.address, tx.getRawDataToSign(i), allTxInput.get(i).signature))
                 {
-                    System.out.println("signature is not valid");
+                    System.out.println("signature is not valid with " + i);
                     return false;
                 }
                 totalInput += out.value; 
@@ -116,15 +116,17 @@ public class TxHandler {
         for(int i=0; i<possibleTxs.length; i++)
         {
             boolean goodTx = true;
-            //System.out.println("transaction " + i);
+            System.out.println("transaction " + i);
             if(isValidTx(possibleTxs[i]))
             {
                 for(Transaction.Input obj : possibleTxs[i].getInputs())
                 {
                     UTXO utxo = new UTXO(obj.prevTxHash, obj.outputIndex);
+                    System.out.println("check if tx is referencing to UTXO, Pool Size " + m_utxoPool.getAllUTXO().size());
                     if(m_utxoPool.contains(utxo))
                     {
                         m_utxoPool.removeUTXO(utxo);
+                        System.out.println("check tx is referenced to UTXO, remove it, Pool Size " + m_utxoPool.getAllUTXO().size());
                     }
                     else
                     {
@@ -139,6 +141,7 @@ public class TxHandler {
                     {
                         UTXO utxo = new UTXO(possibleTxs[i].getHash(), j);
                         m_utxoPool.addUTXO(utxo, obj);
+                        System.out.println("check tx is added to UTXO, Pool Size " + m_utxoPool.getAllUTXO().size());
                         j++;
                     }
                     _tmpTxs.add(possibleTxs[i]);

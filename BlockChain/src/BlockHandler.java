@@ -35,7 +35,10 @@ public class BlockHandler {
 
         current.finalize();
         if (blockChain.addBlock(current))
+        {
+            System.out.println("create new block completed");
             return current;
+        }
         else
             return null;
     }

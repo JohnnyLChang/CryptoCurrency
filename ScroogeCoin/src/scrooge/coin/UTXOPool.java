@@ -1,6 +1,9 @@
+package scrooge.coin;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
+
+import scrooge.coin.Transaction.Output;
 
 public class UTXOPool {
 
@@ -19,7 +22,7 @@ public class UTXOPool {
         H = new HashMap<UTXO, Transaction.Output>(uPool.H);
     }
 
-    /** Adds a mapping from UTXO {@code utxo} to transaction output @code{txOut} to the pool */
+	/** Adds a mapping from UTXO {@code utxo} to transaction output @code{txOut} to the pool */
     public void addUTXO(UTXO utxo, Transaction.Output txOut) {
         H.put(utxo, txOut);
     }

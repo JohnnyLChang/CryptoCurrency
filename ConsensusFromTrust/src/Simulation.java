@@ -13,9 +13,11 @@ public class Simulation {
 
    public static void main(String[] args) {
 
-      // There are four required command line arguments: p_graph (.1, .2, .3),
-      // p_malicious (.15, .30, .45), p_txDistribution (.01, .05, .10), 
-      // and numRounds (10, 20). You should try to test your CompliantNode
+      // There are four required command line arguments: 
+	  // p_graph (.1, .2, .3),
+      // p_malicious (.15, .30, .45), 
+	  // p_txDistribution (.01, .05, .10), 
+      // p_numRounds (10, 20). You should try to test your CompliantNode
       // code for all 3x3x3x2 = 54 combinations.
 
       int numNodes = 100;
@@ -112,22 +114,22 @@ public class Simulation {
       }
 
       // print results
-      for (int i = 0; i < numNodes; i++) {
+      /*for (int i = 0; i < numNodes; i++) {
          Set<Transaction> transactions = nodes[i].sendToFollowers();
          System.out.println("Transaction ids that Node " + i + " believes consensus on:");
          for (Transaction tx : transactions)
             System.out.println(tx.id);
          System.out.println();
          System.out.println();
-      }
+      }*/
       
-//      int[] txnCounts = new int[numNodes];
-//      for (int i = 0; i < numNodes; i++) {
-//          Set<Transaction> transactions = nodes[i].sendToFollowers();
-//          txnCounts[i] = transactions.size();
-//          System.out.println("Node " + i + " believes consensus on " + transactions.size() + " transactions");
-//      }
-//      System.out.println("Mode: " + mode(txnCounts));
+      int[] txnCounts = new int[numNodes];
+      for (int i = 0; i < numNodes; i++) {
+          Set<Transaction> transactions = nodes[i].sendToFollowers();
+          txnCounts[i] = transactions.size();
+          System.out.println("Node " + i + " believes consensus on " + transactions.size() + " transactions");
+      }
+      //System.out.println("Mode: " + mode(txnCounts));
    }
 
 

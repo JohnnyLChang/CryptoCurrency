@@ -1,3 +1,4 @@
+package scrooge.coin;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
